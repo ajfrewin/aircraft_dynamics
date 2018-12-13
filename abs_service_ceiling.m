@@ -100,3 +100,7 @@ while abs(RC_max1) > eps
     h = h + delta;
     disp(h);
 end
+
+
+%% Turn Radius calculation
+
