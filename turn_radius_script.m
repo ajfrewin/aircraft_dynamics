@@ -1,5 +1,9 @@
+% Author: Adam Frewin 2018
+% Description: Calculates the minimum radius of turn for an aircraft
+% Data taken from Gulfstream IV
 clc; clear variables;
 
+%% Constant
 W = 73000; % weight
 S = 950; % wing area
 Cd0 = 0.015; 
@@ -29,7 +33,7 @@ n_lim = min(n_lim, n_max_S);
 % minimum radius of turn
 R_min = V.^2.*(g*sqrt(n_lim.^2 - 1)).^-1;
 
-
+%% Printing values
 fprintf('   V            N alpha\n');
 disp('-----------------------');
 count = 200;
@@ -48,6 +52,11 @@ for i=1:length(V)
     count = count + diff;
 end
 
+%% Plot
 plot(V, n_max_alph);
 hold on
 plot(V, n_max_T);
+grid();
+xlabel('Velocity (ft/s)');
+ylabel('Load factor');
+legend('Lift limitation','Thrust limitation')
