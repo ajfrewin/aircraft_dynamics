@@ -1,8 +1,10 @@
 function [alpha_0, delta_e]=static_stability_elevator(h, hac, a, at, ae,...
     S, St, l, c, de_dalpha, Cmac, Clow, it, e0, rho, V, W)
 
-% Determines if aircraft is statically stable and if so
-% returns the trim angle of attack
+% Author: Adam Frewin 2018
+% Description: Computes pitch-stability matrix for fixed-wing aircraft
+% under elevator control. Returns resulting AoA and elevator deflection to
+% trim at specifice velocity
 
 Vh = l/c * St/S; % tail volume
 
@@ -49,6 +51,7 @@ else
     fprintf('Trim alpha = ' +  string(alpha_0*180/pi) + ' degrees\n');
     fprintf('Trim elevator deflection = ' +  string(delta_e*180/pi) + ' degrees\n \n');
 end
+% Alternative calculation expanding matrix equation by hand
 fprintf('Alternate calculation:\n');
 Cl_trim = W/(.5*rho*V^2*S);
 a_bar = a*(1 + at/a * St/S * (1- de_dalpha));

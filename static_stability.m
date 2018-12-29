@@ -1,11 +1,11 @@
 function alpha_0=static_stability(h, h_ac, a, at, S, St, l, c, de_dalpha,...
     Cmac, Clow, it, e0, plot_vals)
+% Author: Adam Frewin 2018
+% Description: determines if aircraft is statically stable and if so
+% returns the Angle of attack at which it will achieve steady level flight
 
 fprintf('CG = ' + string(h*c*12) +...
     ' inches\nCL_0,w = ' + string(Clow) + '\n');
-
-% Determines if aircraft is statically stable and if so
-% returns the trim angle of attack
 Vh = l/c * St/S;
 Cm0 = Cmac + Clow*(h-h_ac) - at*(it-e0)*Vh * (1 - (h - h_ac)*c/l);
 fprintf('Cm0 = ' + string(Cm0) + '\n');

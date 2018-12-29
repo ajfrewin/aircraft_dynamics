@@ -1,11 +1,16 @@
 function A_lat = lat_stab(Clbeta, Clp, Clr, CYbeta, CYp, CYr, Cnbeta, Cnp, Cnr,...
     m, rho, S, b, thta0, u0, Ix, Iz, Izx)
-g = 32.2;
-scale = 1/2*rho*u0*S*b;
-Ixprim = (Ix*Iz - Izx^2)/Iz;
+% Author: Adam Frewin 2018
+% Description: Computes lateral stability matrix of a standard fixed-wing
+% aircraft, according to the lateral linear model
+
+g = 32.26; % gravity acceleration, ft/s^2
+scale = 1/2*rho*u0*S*b;  % dimensional scale factor
+Ixprim = (Ix*Iz - Izx^2)/Iz;  % Scaled moments of inertia
 Izprim = (Ix*Iz - Izx^2)/Ix;
 Izxprim = Izx/(Ix*Iz - Izx^2);
 
+% Dimensionalized Stability derivatives
 Yv = scale/b*CYbeta;
 Yp = 1/2*scale*CYp;
 Yr = 1/2*scale*CYr;
@@ -18,6 +23,7 @@ Nv = scale*Cnbeta;
 Np = 1/2*scale*b*Cnp;
 Nr = 1/2*scale*b*Cnr;
 
+% Compilation of the matrix
 A1 = [Yv/m Yp/m (Yr/m - u0) g*cos(thta0)];
 A2 = [(Lv/Ixprim + Izxprim*Nv) (Lp/Ixprim + Izxprim*Np)...
     (Lr/Ixprim + Izxprim*Nr) 0];
