@@ -14,7 +14,7 @@ def temp_ft(h):
     if h <= 36089:
         return 288.16 - 1.9812e-3 * h
     else:
-        return 288.16 - 1.9812e-3 * 11000
+        return 288.16 - 1.9812e-3 * 36089
 
 def dens_imp(h):
     # Calculate air density in imperial units
@@ -23,9 +23,108 @@ def dens_imp(h):
     else:
         return dens_imp(36089) * np.exp(-32.15 * (h - 36089) / (3.0892e3 * temp_ft(36089)))
 
+def long_stab(plane, rho, u0, CL1, CD1, Cm1, CDu, CLu, Cmu, CDalpha, CLalpha, CMalpha,CLalphadot, CMalphadot, CLq, CMq):
+    '''
+    Computes longitudinal stability matrix based on the longitudinal linear model
+
+    :param plane: aircraft object
+    :param rho: density at performance altitude
+    :param u0: airspeed
+    :param CL1: steady-state lift coefficient
+    :param CD1: steady state drag coefficient
+    :param Cm1: steady-state moment coefficient
+
+    NON-DIMENSIONAL STABILITY DERIVATIVES:
+    :param CDu:
+    :param CLu:
+    :param Cmu:
+
+    :param CDalpha:
+    :param CLalpha:
+    :param CMalpha:
+
+    :param CLalphadot:
+    :param CMalphadot:
+
+    :param CLq:
+    :param CMq:
+    :return: The longitudinal stability matrix
+    '''
+
+    # Additional / Derived non-dimensional stability derivatives
+    CXu = -(CDu + 2 * CD1)
+    CXalpha = -(CDalpha - CL1)
+
+    CXalphadot = 0
+    CXq = 0
+    Czu = -(CLu + 2 * CL1)
+    Czalpha = -(CLalpha + CD1)
+    Czalphadot = -CLalphadot
+    Czq = -CLq
+
+    Cw0 = plane.W / (1 / 2 * rho * u0 ** 2 * plane.S)
+
+    # Dimensionalized derivatives
+    Xu = rho * u0 * plane.S * Cw0 * np.sin(plane.thta0) + 1 / 2 * rho * u0 * plane.S * CXu
+    Xw = 1 / 2 * rho * u0 * plane.S * CXalpha
+    Xq = 1 / 4 * rho * u0 * plane.c * plane.S * CXq
+    Xwdot = 1 / 4 * rho * plane.c * plane.S * CXalphadot
+
+    Zu = -rho * u0 * plane.S * Cw0 * np.cos(plane.thta0) + 1 / 2 * rho * u0 * plane.S * Czu
+    Zw = 1 / 2 * rho * u0 * plane.S * Czalpha
+    Zq = 1 / 4 * rho * u0 * plane.c * plane.S * Czq
+    Zwdot = 1 / 4 * rho * plane.c * plane.S * Czalphadot
+
+    Mu = 1 / 2 * rho * u0 * plane.c * plane.S * Cmu
+    Mw = 1 / 2 * rho * u0 * plane.c * plane.S * CMalpha
+    Mq = 1 / 4 * rho * u0 * plane.c ** 2 * plane.S * CMq
+    Mwdot = 1 / 4 * rho * plane.c ** 2 * plane.S * CMalphadot
+
+    A1 = [Xu / plane.m, Xw / plane.m, 0, -g * np.cos(plane.thta0)]
+    A2 = [Zu / (plane.m - Zwdot), Zw / (plane.m - Zwdot), (Zq + plane.m * u0) / (plane.m - Zwdot), -plane.m * g * np.sin(plane.thta0) / (plane.m - Zwdot)]
+    A3 = 1 / plane.Jyy * np.array(
+        [Mu + Mwdot * Zw / (plane.m - Zwdot), Mw + Mwdot * Zw / (plane.m - Zwdot), Mq + Mwdot * (Zq + plane.m * u0) / (plane.m - Zwdot),
+         -Mwdot * plane.m * g * np.sin(plane.thta0) / (plane.m - Zwdot)])
+    A4 = [0, 0, 1, 0]
+    A_long = np.array([A1, A2, A3, A4])
+    return A_long
+
+
+def lat_stab(plane, u0, rho, CYbeta, Clbeta, Cnbeta, CYp, Clp, Cnp, CYr, Clr, Cnr):
+
+    scale = 1/2*rho*u0*plane.S*plane.b
+    Ixprim = (plane.Jxx*plane.Jzz - plane.Jxz**2)/plane.Jzz
+    Izprim = (plane.Jxx*plane.Jzz - plane.Jxz**2)/plane.Jxx
+    Izxprim = plane.Jxz/(plane.Jxx*plane.Jzz - plane.Jxz**2)
+
+    scale = 1 / 2 * rho * u0 * plane.S * plane.b # dimensional scaling parameter
+
+    Yv = scale/plane.b*CYbeta
+    Yp = 1/2*scale*CYp
+    Yr = 1/2*scale*CYr
+
+    Lv = scale*Clbeta
+    Lp = 1/2*scale*plane.b*Clp
+    Lr = 1/2*scale*plane.b*Clr
+
+    Nv = scale*Cnbeta
+    Np = 1/2*scale*plane.b*Cnp
+    Nr = 1/2*scale*plane.b*Cnr
+
+    A1 = [Yv/plane.m, Yp/plane.m, (Yr/plane.m - u0), g*np.cos(plane.thta0)]
+    A2 = [(Lv/Ixprim + Izxprim*Nv), (Lp/Ixprim + Izxprim*Np),
+        (Lr/Ixprim + Izxprim*Nr), 0]
+    A3 = [(Izxprim*Lv + Nv/Izprim), (Izxprim*Lp + Np/Izprim),
+        (Izxprim*Lr + Nr/Izprim), 0]
+    A4 = [0, 1, np.tan(plane.thta0), 0]
+
+    A_lat = np.array([A1, A2, A3, A4])
+
+    return A_lat
+
 
 class Aircraft:
-    def __init__(self, h_cg, h_ac, S, St, lt, c, a, at, ae, de_dalpha, Cmac, Clow, Cd0, K, it, e0, W, T_sl):
+    def __init__(self, h_cg, h_ac, S, St, lt, c, b, a, at, ae, de_dalpha, Cmac, Clow, Cd0, K, it, e0, W, T_sl, Jxx, Jyy, Jzz, Jxz):
         '''
 
         Structural parameters
@@ -59,6 +158,7 @@ class Aircraft:
         self.St = St
         self.lt = lt
         self.c = c
+        self.b = b
         self.a = a
         self.at = at
         self.ae = ae
@@ -71,6 +171,10 @@ class Aircraft:
         self.e0 = e0
         self.W = W
         self.T_sl = T_sl
+        self.Jxx = Jxx
+        self.Jyy = Jyy
+        self.Jzz = Jzz
+        self.Jxz = Jxz
 
         # Derived variables
         self.L_D_max = math.sqrt(1/(4*self.Cd0*K))
@@ -79,8 +183,8 @@ class Aircraft:
         a_bar = a + at * (1 - de_dalpha) * St / S
         self.h_np= h_ac + at / a_bar * (1 - de_dalpha) * self.Vh
         self.derivs = self.stability_derivs()
-        self.Jyy = 10
-
+        self.m = W/g  # mass
+        self.thta0 = 0
     def describe_performance(self,h, V):
         '''
         Describes the performance of the aircraft at a given altitude and velocity
